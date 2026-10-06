@@ -1,0 +1,475 @@
+{
+  "version": 1,
+  "title": "Never Gonna Give You Up",
+  "audio": "rick.mp3",
+  "duration": 211.2,
+  "bpm": 113.63,
+  "offset": 1.705,
+  "beatsPerBar": 4,
+  "markers": [
+    {
+      "id": "mhz9ybv",
+      "t": 1.705,
+      "label": "intro"
+    },
+    {
+      "id": "m9o2iuq",
+      "t": 18.602,
+      "label": "verse 1"
+    },
+    {
+      "id": "me1vzc9",
+      "t": 35.499,
+      "label": "pre 1"
+    },
+    {
+      "id": "mj3i9h3",
+      "t": 43.947,
+      "label": "chorus 1"
+    },
+    {
+      "id": "mod7k3l",
+      "t": 60.844,
+      "label": "verse 2"
+    },
+    {
+      "id": "mojcz4x",
+      "t": 77.741,
+      "label": "pre 2"
+    },
+    {
+      "id": "m6w66ec",
+      "t": 86.19,
+      "label": "chorus 2"
+    },
+    {
+      "id": "mygwlr0",
+      "t": 119.984,
+      "label": "bridge"
+    },
+    {
+      "id": "mgmmlyy",
+      "t": 136.881,
+      "label": "breakdown"
+    },
+    {
+      "id": "m73ij8c",
+      "t": 153.778,
+      "label": "final chorus"
+    },
+    {
+      "id": "moglwzr",
+      "t": 196.02,
+      "label": "outro"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "base",
+      "name": "Base look",
+      "muted": false,
+      "clips": [
+        {
+          "id": "c1ikqox",
+          "type": "look",
+          "start": 1.705,
+          "end": 18.602,
+          "fadeIn": 3,
+          "label": "intro haze",
+          "dimmer": 0.7,
+          "colour": "purple",
+          "crawl": 0.55,
+          "aim": {
+            "pan": 0,
+            "tilt": 25
+          }
+        },
+        {
+          "id": "c8fo078",
+          "type": "look",
+          "start": 18.602,
+          "end": 35.499,
+          "fixtures": "all",
+          "dimmer": 0.6,
+          "colour": "blue",
+          "gobo": "flower8"
+        },
+        {
+          "id": "co28cps",
+          "type": "look",
+          "start": 35.499,
+          "end": 43.947,
+          "dimmer": 0.85,
+          "colour": "cyan",
+          "gobo": "star",
+          "goboMode": "shake",
+          "goboSpeed": 0.5
+        },
+        {
+          "id": "c8pkqwc",
+          "type": "look",
+          "start": 43.947,
+          "end": 60.844,
+          "dimmer": 1,
+          "colour": "white",
+          "prism": "in"
+        },
+        {
+          "id": "cim9gct",
+          "type": "look",
+          "start": 60.844,
+          "end": 77.741,
+          "dimmer": 0.6,
+          "colour": "green",
+          "gobo": "grid"
+        },
+        {
+          "id": "cm0i2uo",
+          "type": "look",
+          "start": 77.741,
+          "end": 86.19,
+          "dimmer": 0.85,
+          "colour": "cyan",
+          "gobo": "star",
+          "goboMode": "shake",
+          "goboSpeed": 0.7
+        },
+        {
+          "id": "ccq4di1",
+          "type": "look",
+          "start": 86.19,
+          "end": 119.984,
+          "dimmer": 1,
+          "colour": "yellow",
+          "prism": "rotate",
+          "prismSpeed": 0.4
+        },
+        {
+          "id": "c5wssfu",
+          "type": "look",
+          "start": 119.984,
+          "end": 136.881,
+          "dimmer": 0.75,
+          "colour": "red",
+          "gobo": "donut3",
+          "goboMode": "shake",
+          "goboSpeed": 0.3
+        },
+        {
+          "id": "cd39eah",
+          "type": "look",
+          "start": 136.881,
+          "end": 153.778,
+          "fadeIn": 1,
+          "dimmer": 0.45,
+          "colour": "blue",
+          "crawl": 0.7
+        },
+        {
+          "id": "cbkjfhw",
+          "type": "look",
+          "start": 153.778,
+          "end": 196.02,
+          "dimmer": 1,
+          "colour": "white",
+          "prism": "rotate",
+          "prismSpeed": 0.7
+        },
+        {
+          "id": "c93ar31",
+          "type": "look",
+          "start": 196.02,
+          "end": 211.2,
+          "fadeOut": 12,
+          "dimmer": 0.8,
+          "colour": "orange",
+          "crawl": 0.8
+        }
+      ]
+    },
+    {
+      "id": "move",
+      "name": "Movement",
+      "muted": false,
+      "clips": [
+        {
+          "id": "c5zzsd9",
+          "type": "move",
+          "start": 1.705,
+          "end": 18.602,
+          "figure": "drift",
+          "width": 50,
+          "height": 20,
+          "period": 16,
+          "aim": {
+            "pan": 0,
+            "tilt": 25
+          }
+        },
+        {
+          "id": "cgthuoy",
+          "type": "move",
+          "start": 18.602,
+          "end": 35.499,
+          "figure": "sweep",
+          "width": 50,
+          "period": 8,
+          "spread": 0.5,
+          "aim": {
+            "pan": 0,
+            "tilt": 40
+          }
+        },
+        {
+          "id": "cfya2ob",
+          "type": "move",
+          "start": 35.499,
+          "end": 43.947,
+          "figure": "wave",
+          "height": 40,
+          "period": 2,
+          "aim": {
+            "pan": 0,
+            "tilt": 35
+          }
+        },
+        {
+          "id": "cgu4bo6",
+          "type": "move",
+          "start": 43.947,
+          "end": 52.395,
+          "figure": "fan",
+          "width": 110,
+          "breathe": 8,
+          "aim": {
+            "pan": 0,
+            "tilt": 45
+          }
+        },
+        {
+          "id": "ck2alay",
+          "type": "move",
+          "start": 52.395,
+          "end": 60.844,
+          "figure": "circle",
+          "width": 50,
+          "height": 30,
+          "period": 4,
+          "spread": 0.25,
+          "aim": {
+            "pan": 0,
+            "tilt": 45
+          }
+        },
+        {
+          "id": "cwzqqde",
+          "type": "move",
+          "start": 60.844,
+          "end": 77.741,
+          "figure": "figure8",
+          "width": 60,
+          "height": 20,
+          "period": 8,
+          "aim": {
+            "pan": 0,
+            "tilt": 40
+          }
+        },
+        {
+          "id": "cw14xvo",
+          "type": "move",
+          "start": 77.741,
+          "end": 86.19,
+          "figure": "wave",
+          "height": 40,
+          "period": 2,
+          "aim": {
+            "pan": 0,
+            "tilt": 35
+          }
+        },
+        {
+          "id": "cgc0g0g",
+          "type": "move",
+          "start": 86.19,
+          "end": 103.087,
+          "figure": "circle",
+          "width": 60,
+          "height": 30,
+          "period": 2,
+          "spread": 0.5,
+          "aim": "crowd"
+        },
+        {
+          "id": "cxjum8s",
+          "type": "move",
+          "start": 103.087,
+          "end": 119.984,
+          "figure": "cross",
+          "width": 60,
+          "aim": {
+            "pan": 0,
+            "tilt": 50
+          }
+        },
+        {
+          "id": "cx4kboz",
+          "type": "move",
+          "start": 119.984,
+          "end": 136.881,
+          "figure": "snap",
+          "period": 2,
+          "spread": 1,
+          "positions": [
+            "crowd-left",
+            "sky",
+            "crowd-right",
+            "crowd"
+          ]
+        },
+        {
+          "id": "c3b3w49",
+          "type": "move",
+          "start": 136.881,
+          "end": 153.778,
+          "figure": "drift",
+          "width": 40,
+          "height": 20,
+          "period": 16,
+          "aim": {
+            "pan": 0,
+            "tilt": 20
+          }
+        },
+        {
+          "id": "cx9a6bc",
+          "type": "move",
+          "start": 153.778,
+          "end": 196.02,
+          "figure": "fan",
+          "width": 120,
+          "breathe": 4,
+          "aim": {
+            "pan": 0,
+            "tilt": 50
+          }
+        },
+        {
+          "id": "cmwbo0a",
+          "type": "move",
+          "start": 196.02,
+          "end": 211.2,
+          "fadeIn": 4,
+          "figure": "still",
+          "aim": "sky"
+        }
+      ]
+    },
+    {
+      "id": "fx",
+      "name": "Effects",
+      "muted": false,
+      "clips": [
+        {
+          "id": "c4f6tye",
+          "type": "fx",
+          "start": 35.499,
+          "end": 43.947,
+          "effect": "pulse",
+          "period": 2,
+          "floor": 0.35
+        },
+        {
+          "id": "c2re4tj",
+          "type": "fx",
+          "start": 43.947,
+          "end": 60.844,
+          "effect": "pulse",
+          "period": 1,
+          "floor": 0.45,
+          "decay": 0.5
+        },
+        {
+          "id": "ct603kl",
+          "type": "fx",
+          "start": 43.947,
+          "end": 60.844,
+          "effect": "colourStep",
+          "period": 4,
+          "colours": [
+            "white",
+            "cyan",
+            "purple",
+            "yellow"
+          ],
+          "spread": 0.5
+        },
+        {
+          "id": "c2g96d5",
+          "type": "fx",
+          "start": 77.741,
+          "end": 86.19,
+          "effect": "pulse",
+          "period": 2,
+          "floor": 0.35
+        },
+        {
+          "id": "cexccsg",
+          "type": "fx",
+          "start": 86.19,
+          "end": 103.087,
+          "label": "pingpong chase",
+          "effect": "chase",
+          "period": 0.5,
+          "order": "pingpong"
+        },
+        {
+          "id": "cvw91y9",
+          "type": "fx",
+          "start": 103.087,
+          "end": 119.984,
+          "effect": "flash",
+          "period": 1,
+          "duty": 0.4,
+          "floor": 0.15
+        },
+        {
+          "id": "c0alxez",
+          "type": "fx",
+          "start": 136.881,
+          "end": 153.778,
+          "effect": "wave",
+          "period": 4,
+          "spread": 1,
+          "floor": 0.2
+        },
+        {
+          "id": "cjzrzel",
+          "type": "fx",
+          "start": 153.778,
+          "end": 196.02,
+          "effect": "flash",
+          "period": 1,
+          "duty": 0.45,
+          "floor": 0.2
+        },
+        {
+          "id": "clpdddb",
+          "type": "fx",
+          "start": 153.778,
+          "end": 196.02,
+          "effect": "colourStep",
+          "period": 2,
+          "colours": [
+            "cyan",
+            "purple",
+            "yellow",
+            "red",
+            "green"
+          ],
+          "spread": 1
+        }
+      ]
+    }
+  ]
+}

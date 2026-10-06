@@ -1,0 +1,22 @@
+{
+  "name": "dmx-show",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Light show builder for the Realsun Beam 150 rig: timeline, 3D preview, ENTTEC output, MCP for Claude",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "mcp": "node mcp.js",
+    "test": "node --test test/*.test.js",
+    "probe": "node enttec.js --probe"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "three": "^0.186.1",
+    "ws": "^8.22.0",
+    "zod": "^4.6.5"
+  }
+}

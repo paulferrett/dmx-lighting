@@ -1,0 +1,6 @@
+node_modules/
+.state.json
+.server.log
+songs/*
+!songs/.gitkeep
+shows/*.tmp
