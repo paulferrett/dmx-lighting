@@ -197,12 +197,7 @@
           "figure": "snap",
           "period": 2,
           "spread": 1,
-          "positions": [
-            "crowd-left",
-            "sky",
-            "crowd-right",
-            "crowd"
-          ]
+          "positions": ["crowd-left", "sky", "crowd-right", "crowd"]
         },
         {
           "id": "c3b3w49",
@@ -396,12 +391,7 @@
           "end": 60.844,
           "effect": "colourStep",
           "period": 4,
-          "colours": [
-            "white",
-            "cyan",
-            "purple",
-            "yellow"
-          ],
+          "colours": ["white", "cyan", "purple", "yellow"],
           "spread": 0.5
         },
         {
@@ -460,13 +450,7 @@
           "end": 196.02,
           "effect": "colourStep",
           "period": 2,
-          "colours": [
-            "cyan",
-            "purple",
-            "yellow",
-            "red",
-            "green"
-          ],
+          "colours": ["cyan", "purple", "yellow", "red", "green"],
           "spread": 1
         }
       ]

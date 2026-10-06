@@ -41,7 +41,7 @@ test('aiming at a point converges the heads and round-trips through the beam dir
     const len = Math.hypot(...v);
     v.forEach((x, i) => near(x / len, d[i], 1e-9));
   }
-  const hung = { ...rig.fixtures[0], mount: 'hung', position: [0, 4, 0], yaw: 30 };
+  const hung = { ...rig.fixtures[0], rotation: [0, 30, 180], position: [0, 4, 0] };
   const { pan, tilt } = panTiltToPoint(rig, hung, [1, 0, 3]);
   const d = beamDirection(hung, pan, tilt);
   const v = [1, -4, 3]; const len = Math.hypot(...v);
@@ -145,4 +145,60 @@ test('analysis finds the tempo and bar 1 of a synthetic kick track', () => {
   assert.ok(Math.abs(a.bpm - bpm) < 1, `bpm ${a.bpm}`);
   near(a.offset, start, 0.03);
   assert.ok(a.bars.length > 15);
+});
+
+test('fixture rotation matches three.js exactly, so the stage draws what the engine aims', async () => {
+  const THREE = await import('three');
+  const rot = [20, 45, 160];
+  const fixture = { ...rig.fixtures[0], rotation: rot, position: [1, 3, -1] };
+  const m = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...rot.map((d) => d * Math.PI / 180), 'XYZ'));
+  for (const [pan, tilt] of [[0, 0], [30, 45], [-120, 80], [200, -60]]) {
+    const local = new THREE.Vector3(Math.sin(tilt * Math.PI / 180) * Math.sin(pan * Math.PI / 180), Math.cos(tilt * Math.PI / 180), Math.sin(tilt * Math.PI / 180) * Math.cos(pan * Math.PI / 180));
+    const want = local.applyMatrix4(m);
+    const got = beamDirection(fixture, pan, tilt);
+    near(got[0], want.x, 1e-9); near(got[1], want.y, 1e-9); near(got[2], want.z, 1e-9);
+  }
+  // and aiming at a point round-trips through it
+  const target = [2, 0.5, 4];
+  const { pan, tilt, clamped } = panTiltToPoint(rig, fixture, target);
+  if (!clamped) {
+    const d = beamDirection(fixture, pan, tilt);
+    const v = target.map((x, i) => x - fixture.position[i]); const len = Math.hypot(...v);
+    v.forEach((x, i) => near(x / len, d[i], 1e-9));
+  }
+});
+
+test('the old mount/yaw form reads the same as the rotation it became', () => {
+  const old = { ...rig.fixtures[0], rotation: undefined, mount: 'hung', yaw: 30 };
+  const now = { ...rig.fixtures[0], rotation: [0, 30, 180] };
+  const a = beamDirection(old, 40, 50), b = beamDirection(now, 40, 50);
+  a.forEach((x, i) => near(x, b[i], 1e-12));
+});
+
+test('room objects are aim targets, and an old stage block becomes a room', async () => {
+  const { normaliseRig, allTargets } = await import('../lib/rig.js');
+  const old = structuredClone(rig);
+  delete old.room;
+  old.stage = { haze: 0.4, wall: true };
+  old.fixtures = old.fixtures.map(({ rotation, ...f }) => ({ ...f, mount: 'hung', yaw: 10 }));
+  normaliseRig(old);
+  assert.equal(old.stage, undefined);
+  assert.equal(old.room.haze, 0.4);
+  assert.deepEqual(old.fixtures[0].rotation, [0, 10, 180]);
+  assert.equal(old.fixtures[0].mount, undefined);
+  const t = allTargets(old);
+  assert.deepEqual(t['back-wall'], [0, 2, -2.5]);   // a wall's centre
+  assert.deepEqual(t['dj-booth'], [0, 1.05, -1.1]); // a box's top
+  assert.deepEqual(t.dancefloor, [0, 0, 6.2]);      // a zone on the floor
+  assert.ok(t.crowd, 'named targets still there');
+});
+
+test('a rig with clashing addresses or ids is refused with the reason', async () => {
+  const { normaliseRig } = await import('../lib/rig.js');
+  const bad = structuredClone(rig);
+  bad.fixtures[1].address = 5;
+  assert.throws(() => normaliseRig(bad), /h2 at 5 overlaps h1/);
+  const dup = structuredClone(rig);
+  dup.room.objects.push({ ...dup.room.objects[0] });
+  assert.throws(() => normaliseRig(dup), /unique/);
 });

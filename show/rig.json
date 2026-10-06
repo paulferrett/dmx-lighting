@@ -1,13 +1,10 @@
 {
   "name": "Paul's four beams",
-  "notes": "Positions are placeholders until the real hang is measured. Metres; x runs left to right as the audience sees it, y is up, z points at the audience. The rig line is z = 0.",
-  "stage": {
-    "width": 10,
-    "depth": 12,
-    "haze": 0.6,
-    "wall": true
+  "notes": "Positions and rotations are placeholders until the real setup is measured — move the heads in the console's rig editor. Metres; x runs left to right as the audience sees it, y is up, z points at the audience. Rotation is degrees about x, y, z (three.js Euler XYZ): [0,0,0] upright facing the audience, [0,0,180] hung.",
+  "home": {
+    "pan": 0,
+    "tilt": 0
   },
-  "home": { "pan": 0, "tilt": 0 },
   "targets": {
     "crowd": [0, 2.6, 6],
     "crowd-left": [-4, 2.6, 6],
@@ -22,9 +19,17 @@
       "gdtf": "../Realsun_Beam_150.gdtf",
       "footprint": 16,
       "channels": {
-        "pan": 1, "panFine": 2, "tilt": 3, "tiltFine": 4,
-        "ptspeed": 5, "dimmer": 6, "strobe": 7, "colour": 8,
-        "gobo": 9, "prism": 10, "auto": 11
+        "pan": 1,
+        "panFine": 2,
+        "tilt": 3,
+        "tiltFine": 4,
+        "ptspeed": 5,
+        "dimmer": 6,
+        "strobe": 7,
+        "colour": 8,
+        "gobo": 9,
+        "prism": 10,
+        "auto": 11
       },
       "panRange": 540,
       "tiltRange": 180,
@@ -33,38 +38,143 @@
       "tiltSpeed": 160,
       "strobeHz": [0.5, 20],
       "colours": [
-        { "name": "white",  "dmx": 0,   "hex": "#ffffff" },
-        { "name": "red",    "dmx": 16,  "hex": "#ff1f1f" },
-        { "name": "green",  "dmx": 32,  "hex": "#22ff44" },
-        { "name": "blue",   "dmx": 48,  "hex": "#2a3cff" },
-        { "name": "yellow", "dmx": 64,  "hex": "#ffe81f" },
-        { "name": "purple", "dmx": 80,  "hex": "#b324ff" },
-        { "name": "cyan",   "dmx": 96,  "hex": "#1fd6ff" },
-        { "name": "orange", "dmx": 112, "hex": "#ff8a1f" }
+        {
+          "name": "white",
+          "dmx": 0,
+          "hex": "#ffffff"
+        },
+        {
+          "name": "red",
+          "dmx": 16,
+          "hex": "#ff1f1f"
+        },
+        {
+          "name": "green",
+          "dmx": 32,
+          "hex": "#22ff44"
+        },
+        {
+          "name": "blue",
+          "dmx": 48,
+          "hex": "#2a3cff"
+        },
+        {
+          "name": "yellow",
+          "dmx": 64,
+          "hex": "#ffe81f"
+        },
+        {
+          "name": "purple",
+          "dmx": 80,
+          "hex": "#b324ff"
+        },
+        {
+          "name": "cyan",
+          "dmx": 96,
+          "hex": "#1fd6ff"
+        },
+        {
+          "name": "orange",
+          "dmx": 112,
+          "hex": "#ff8a1f"
+        }
       ],
       "colourSpinFrom": 128,
       "gobos": [
-        { "name": "open",         "dmx": 0 },
-        { "name": "small-circle", "dmx": 8 },
-        { "name": "grid",         "dmx": 16 },
-        { "name": "star",         "dmx": 24 },
-        { "name": "flower8",      "dmx": 32 },
-        { "name": "cross",        "dmx": 40 },
-        { "name": "donut3",       "dmx": 48 },
-        { "name": "flower6",      "dmx": 56 }
+        {
+          "name": "open",
+          "dmx": 0
+        },
+        {
+          "name": "small-circle",
+          "dmx": 8
+        },
+        {
+          "name": "grid",
+          "dmx": 16
+        },
+        {
+          "name": "star",
+          "dmx": 24
+        },
+        {
+          "name": "flower8",
+          "dmx": 32
+        },
+        {
+          "name": "cross",
+          "dmx": 40
+        },
+        {
+          "name": "donut3",
+          "dmx": 48
+        },
+        {
+          "name": "flower6",
+          "dmx": 56
+        }
       ],
       "goboShakeFrom": 64,
       "goboShakeVerified": false,
       "goboScrollFrom": 128,
-      "prism": { "off": 0, "in": 64, "rotateFrom": 128, "facets": 3 },
+      "prism": {
+        "off": 0,
+        "in": 64,
+        "rotateFrom": 128,
+        "facets": 3
+      },
       "measuredNotes": "Every DMX value here was measured on the Disco 240 (see ../README.md). panRange, tiltRange, beamAngle, panSpeed, tiltSpeed and strobeHz are assumptions and only change how the preview draws the heads, never the DMX. Gobo shake (64-127) is known to run the gobos in reverse order; which slot lands on which value is not yet checked on the rig."
     }
   },
   "fixtures": [
-    { "id": "h1", "name": "Head 1", "type": "realsun-beam-150", "address": 1,  "position": [-2.4, 1.5, 0], "mount": "upright", "panOffset": 0, "tiltOffset": 0, "panInvert": false, "tiltInvert": false },
-    { "id": "h2", "name": "Head 2", "type": "realsun-beam-150", "address": 17, "position": [-0.8, 1.5, 0], "mount": "upright", "panOffset": 0, "tiltOffset": 0, "panInvert": false, "tiltInvert": false },
-    { "id": "h3", "name": "Head 3", "type": "realsun-beam-150", "address": 33, "position": [0.8, 1.5, 0],  "mount": "upright", "panOffset": 0, "tiltOffset": 0, "panInvert": false, "tiltInvert": false },
-    { "id": "h4", "name": "Head 4", "type": "realsun-beam-150", "address": 49, "position": [2.4, 1.5, 0],  "mount": "upright", "panOffset": 0, "tiltOffset": 0, "panInvert": false, "tiltInvert": false }
+    {
+      "id": "h1",
+      "name": "Head 1",
+      "type": "realsun-beam-150",
+      "address": 1,
+      "position": [-2.4, 1.5, 0],
+      "rotation": [0, 0, 0],
+      "panOffset": 0,
+      "tiltOffset": 0,
+      "panInvert": false,
+      "tiltInvert": false
+    },
+    {
+      "id": "h2",
+      "name": "Head 2",
+      "type": "realsun-beam-150",
+      "address": 17,
+      "position": [-0.8, 1.5, 0],
+      "rotation": [0, 0, 0],
+      "panOffset": 0,
+      "tiltOffset": 0,
+      "panInvert": false,
+      "tiltInvert": false
+    },
+    {
+      "id": "h3",
+      "name": "Head 3",
+      "type": "realsun-beam-150",
+      "address": 33,
+      "position": [0.8, 1.5, 0],
+      "rotation": [0, 0, 0],
+      "panOffset": 0,
+      "tiltOffset": 0,
+      "panInvert": false,
+      "tiltInvert": false
+    },
+    {
+      "id": "h4",
+      "name": "Head 4",
+      "type": "realsun-beam-150",
+      "address": 49,
+      "position": [2.4, 1.5, 0],
+      "rotation": [0, 0, 0],
+      "panOffset": 0,
+      "tiltOffset": 0,
+      "panInvert": false,
+      "tiltInvert": false
+    }
   ],
   "groups": {
     "all": ["h1", "h2", "h3", "h4"],
@@ -74,5 +184,36 @@
     "inner": ["h2", "h3"],
     "left": ["h1", "h2"],
     "right": ["h3", "h4"]
+  },
+  "room": {
+    "haze": 0.6,
+    "ceiling": null,
+    "objects": [
+      {
+        "id": "back-wall",
+        "label": "Back wall",
+        "kind": "wall",
+        "position": [0.15, 0, -2.5],
+        "size": [14, 4, 0.2],
+        "rotation": 0
+      },
+      {
+        "id": "dj-booth",
+        "label": "DJ booth",
+        "kind": "box",
+        "position": [0, 0, -1.1],
+        "size": [2, 1.05, 0.8],
+        "rotation": 0
+      },
+      {
+        "id": "dancefloor",
+        "label": "Dancefloor",
+        "kind": "zone",
+        "position": [0, 0, 6.2],
+        "size": [9.2, 0, 6.5],
+        "rotation": 0,
+        "crowd": 46
+      }
+    ]
   }
 }

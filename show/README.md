@@ -1,41 +1,82 @@
 # Show builder
 
 A light show for the four Realsun Beam 150s, built on a timeline over the song,
-drawn live in 3D, and run out of the ENTTEC. Claude can build and edit the whole
-thing through the `dmx-show` MCP, and you watch it land in the console as it does.
+drawn live in 3D in the room they're in, and run out of the ENTTEC. Claude can
+build and edit the whole thing through the `dmx-show` MCP, and you watch it land
+in the console as it does.
 
 ```bash
 npm install            # once
-npm start              # → http://localhost:8280
-npm test               # evaluator, DMX map, time parsing, edit ops, tempo detection
+npm start              # → http://localhost:8280 (no build step)
+npm test               # engine, DMX map, rotations, room, time parsing, ops, tempo
+npm run typecheck      # the console's TypeScript
 npm run probe          # ask the ENTTEC for serial + firmware (sends no DMX)
 ```
 
 The MCP (`~/bs/.mcp.json` → `dmx-show`) starts the server itself if it isn't
 running, so in practice you open `localhost:8280` and talk to Claude.
 
-## How it fits together
+## Playback and DMX come first
+
+The picture is allowed to stutter; the light and the music are not. So they
+don't share a thread with anything that draws:
 
 ```
-          Claude ──MCP──▶ mcp.js ─┐
-                                  ├─HTTP─▶ server.js ── shows/*.json (git)
- browser console ◀──WebSocket─────┘           │
-   audio = clock                              └──▶ ENTTEC (/dev/cu.usbserial-EN495619)
-   lib/engine.js → stage (Three.js)                 ▲
-                 → lib/dmx.js → 512 bytes ──────────┘  40 fps, only when output is on
+ browser                                 server.js (main thread)          output-worker.js (own thread)
+ ───────                                 ───────────────────────          ─────────────────────────────
+ <audio>  ── plays on the audio thread
+   │  {t, playing, at}  clock readings ──▶ forwards ─────────────────────▶ own copy of show + rig
+   │  on play/pause/seek, 5×/s playing     HTTP, Vite, song analysis,      40×/s: evaluate at the
+ stage, timeline, panels  (display only)   undo, files, MCP calls          extrapolated clock →
+   can drop frames, nothing follows        can stall, nothing follows      ENTTEC DMX USB PRO
 ```
 
-- **One evaluator.** `lib/engine.js` turns show + rig + time into what every head
-  is doing. The browser runs it to draw the stage *and* to make the DMX, so the
-  picture and the light can't disagree. Claude's `show_state_at` runs the same code.
-- **The audio is the clock.** The browser plays the song and evaluates at its
-  position. Two timers drifting apart over four minutes is the classic failure.
-- **Every edit is an op** (`lib/ops.js`), all-or-nothing, validated against
-  `lib/schema.js`, one undo step. Timeline drags and Claude's edits go through
-  the same path, so undo covers both.
-- **Times are musical.** Clips store seconds, but anything you or Claude type can
-  be `bar 17`, `bar 17.3`, `chorus 1 + 4 bars`, `1:23.5`. Effects and figures run
-  in beats against the show's `bpm` and `offset`.
+- **The audio element is the clock.** Each reading says *when* it was taken
+  (`at`, wall time), so the worker extrapolates exactly even if a reading
+  arrives late behind a slow frame.
+- **The worker holds its own copy** of the show and rig and writes the ENTTEC
+  itself. Measured: with the server's main thread busy for half a second (a song
+  analysis), frames kept coming every 25.9 ms, same as idle.
+- **Only a console someone is driving moves the clock.** A newly opened or
+  paused console says nothing, and a snapshot for Claude draws a frame without
+  touching playback.
+- **If the ENTTEC drops off USB**, output stays wanted ("DMX waiting…"), the
+  worker looks for it once a second, and frames resume when it's back.
+
+## The console
+
+React + Tailwind + shadcn, served by Vite inside `server.js` (edits reload live).
+
+- **Timeline — vis-timeline.** Tracks and clips; ⌘-scroll or pinch to zoom,
+  scroll to pan, drag to move (also between tracks), drag edges to stretch, snap
+  to bar / beat / ½ beat (⌥ drag ignores it), overlapping clips stack,
+  shift-click to pick several, double-click a lane to add, the red line scrubs,
+  section markers drag and rename. 4-bar phrases are shaded.
+- **Waveform — wavesurfer.js**, above the timeline and following its zoom, with
+  a ruler in bars that lands on the song's bar 1 and a hover readout.
+- **Stage — three.js.** Haze beams, gobo streaks, prism splits, beams stopping
+  on whatever they hit, gobos projected onto it, heads that move no faster than
+  the motors.
+- **Rig mode** (top bar → *Rig*): click a head or a room object and move /
+  rotate / resize it with three.js's TransformControls (W / E / R, snap 5 cm /
+  15°), or type exact numbers in *Rig & room*. Heads take a full 3D rotation —
+  upright, hung, on a wall, angled — and the engine aims with the same maths
+  the stage draws with (tested against three.js).
+
+## The room
+
+`rig.json → room`: haze, ceiling height (or `null` for open air), and objects:
+
+| kind | what it is |
+|---|---|
+| `wall` | solid: beams stop on it, gobos land on it |
+| `box` | solid too — the DJ booth, a bar, a speaker stack |
+| `zone` | an area of floor — the dancefloor, where the crowd is drawn |
+
+Each has `position` (base centre, metres), `size` `[w, h, d]`, `rotation` about
+the vertical. Every object is an aim target by its id — a wall's centre, a box's
+top, a zone's centre on the floor — so Claude can design to the room: "sweep the
+dancefloor", "gobos on the back wall".
 
 ## The show model
 
@@ -48,55 +89,60 @@ attributes it sets. Three clip types:
 | `move` | pan/tilt | figure (circle, figure8, sweep, nod, fan, cross, wave, drift, snap, still), aim, width, height, period (beats), spread, breathe, positions |
 | `fx` | brightness / colour / gobo on the beat | effect (pulse, chase, flash, wave, sparkle, colourStep, goboStep), period, spread, decay, duty, floor, level, order |
 
-`aim` is a named target from `rig.json` (heads converge on it), a point
-`[x, y, z]`, or `{pan, tilt}` (heads stay parallel). Fades blend from the layer
-below; a fade up from black arrives already in its colour.
+`aim` is a target or room object (heads converge on it), a point `[x, y, z]`, or
+`{pan, tilt}` (heads stay parallel). Times can be musical everywhere you type
+them: `bar 17`, `bar 17.3`, `chorus 1 + 4 bars`, `1:23.5`. Every edit — timeline,
+panel or Claude — is one all-or-nothing op batch with undo (`lib/ops.js`).
 
 ## Song analysis
 
-`lib/analysis.js`: ffmpeg decodes, then a plain-JS pass finds the tempo, bar 1,
-energy per bar in three bands, energy changes on 4-bar phrase lines, and drops.
-On synthetic tracks at 92–150 BPM it gets the tempo exact and bar 1 within ~10 ms.
-On `rick.mp3` it reads 113.6 BPM and puts the first chorus jump at 0:44.
+`lib/analysis.js`: ffmpeg decodes, then plain JS finds the tempo, bar 1, energy
+per bar in three bands, energy changes on 4-bar phrase lines, and drops. Exact
+tempo and bar 1 within ~10 ms on synthetic tracks at 92–150 BPM; 113.6 BPM on
+`rick.mp3`. It hears energy, not words: Claude names the sections from the
+shape. `allin1` (`../plans/song-to-show.md`) is the upgrade for real labels.
 
-It hears energy, not words, so it can't tell a verse from a chorus. Claude names
-the sections from the shape of the table. `allin1` (see
-`../plans/song-to-show.md`) would label them properly, and is the upgrade if the
-guessing gets in the way.
+## Assumed, not measured
 
-## Things that are assumed, not measured
-
-All of these only change the picture, never the DMX:
-
-- **Positions** in `rig.json`: four heads on stands at 1.5 m, 1.6 m apart.
-  Measure the real setup and change them, or ask Claude to.
-- **Tilt range 180°.** If it's really 180, an upright head can't point below its
-  own horizon (`clamped: true` in the state). Check by sweeping tilt 0 → 255.
-- **Pan range 540°, beam 4°, motor speeds, strobe 0.5–20 Hz, 3-facet prism.**
-- **Gobo shake (64–127)** runs the gobos in reverse; which value lands on which
-  gobo isn't checked yet. The README's measurement table is the place to record it.
-
-`panOffset` / `tiltOffset` / `panInvert` / `tiltInvert` per fixture line the
-preview up with the real heads once you've seen where DMX centre actually points.
+Only the picture depends on these, never the DMX: the head positions until you
+place them, tilt range 180° (if real, an upright head can't point below its own
+horizon — `clamped: true`), pan 540°, beam 4°, motor speeds, strobe 0.5–20 Hz,
+a 3-facet prism, and which gobo each shake value (64–127) lands on.
+`panOffset` / `tiltOffset` / invert per head line the preview up with the real
+heads once you've seen where DMX centre points.
 
 ## Running the real rig
 
-Output is off until you turn it on (button top right, or ask Claude). Unplug the
-Disco 240 first: two transmitters on one DMX line fight. Turning output off sends
-an all-zero frame, so the rig goes dark rather than freezing on the last look.
-Channel 5 (pan/tilt speed) is written on every frame, never left to the fixture's
-default, which parks it at 128 and makes every move crawl.
+Output is off until you turn it on (top right, or ask Claude). Unplug the Disco
+240 first: two transmitters on one DMX line fight. Turning output off sends an
+all-zero frame, so the rig goes dark rather than freezing. Channel 5 (pan/tilt
+speed) is written on every frame, never left to the fixture's default of 128.
+
+## Testing next to a running show
+
+A second server never needs to touch the real one:
+
+```bash
+PORT=8289 SHOW_DATA=/tmp/copy DMX_DEVICE=/nonexistent node server.js
+PORT=8289 node test/mcp-call.js preview_snapshot '{"at":"chorus 1"}' out.jpg
+```
+
+`SHOW_DATA` points `shows/`, `rig.json` and the open-show state at a copy;
+`DMX_DEVICE` pins the serial port (a pty works for output tests). `mcp-call.js`
+passes the environment through to `mcp.js` — without that, the MCP SDK drops
+`PORT` and the call reaches the real console.
 
 ## Files
 
 | | |
 |---|---|
-| `rig.json` | fixtures, positions, groups, aim targets, the measured slot tables |
+| `rig.json` | heads, the room, groups, aim targets, the measured slot tables |
 | `shows/*.json` | the shows — text, diffable, in git |
 | `songs/` | audio and its cached `.analysis.json` (not in git) |
-| `server.js` | HTTP + WebSocket, show storage, undo, ENTTEC output |
+| `server.js` | HTTP + WebSocket, show storage, undo, the console via Vite |
+| `output-worker.js` | the DMX thread |
 | `mcp.js` | the Claude tools |
 | `enttec.js` | DMX USB PRO framing; `--probe` |
-| `lib/` | engine, DMX encoding, schema, ops, time parsing, analysis — shared by Node and the browser |
-| `web/` | the console: `stage.js` (3D), `timeline.js`, `inspector.js`, `app.js` |
-| `test/mcp-call.js` | call any MCP tool from the shell: `node test/mcp-call.js preview_snapshot '{"at":"chorus 1"}' out.jpg` |
+| `lib/` | engine, DMX encoding, rig geometry and room, schema, ops, time parsing, analysis — shared by Node and the browser |
+| `web/src/` | the console: `stage/stage.ts`, `components/` (Timeline, StageView, Inspector, RigPanel), `lib/runtime.ts` (clock, frame loop, snapshots) |
+| `test/` | `node --test`; `mcp-call.js` calls any MCP tool from the shell |

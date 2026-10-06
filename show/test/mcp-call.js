@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 
 const [name, json = '{}', imageOut] = process.argv.slice(2);
 const client = new Client({ name: 'mcp-call', version: '0' });
-await client.connect(new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../mcp.js', import.meta.url))] }));
+// Pass the whole environment: the SDK otherwise forwards only a short list,
+// and PORT=8289 (a test server) would silently become the real one on 8280.
+await client.connect(new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../mcp.js', import.meta.url))], env: { ...process.env } }));
 if (!name) {
   const { tools } = await client.listTools();
   for (const t of tools) console.log(t.name.padEnd(18), t.title);

@@ -10,23 +10,30 @@
 
 import { createServer } from 'node:http';
 import { copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, watch, writeFileSync } from 'node:fs';
-import { basename, extname, join, normalize, resolve } from 'node:path';
+import { basename, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { createServer as createViteServer } from 'vite';
 import { applyOps, describeOps } from './lib/ops.js';
 import { clipTypes, COMMON_PARAMS, emptyShow } from './lib/schema.js';
 import { evaluate } from './lib/engine.js';
 import { encodeUniverse, fixtureChannels } from './lib/dmx.js';
 import { analyse, decode } from './lib/analysis.js';
 import { barBeatAt, resolveTime } from './lib/timeexpr.js';
-import { Enttec, findDevice } from './enttec.js';
+import { findDevice } from './enttec.js';
+import { Worker } from 'node:worker_threads';
+import { prettyJson } from './lib/prettyjson.js';
+import { normaliseRig } from './lib/rig.js';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.env.PORT ?? 8280);
-const SHOWS = join(ROOT, 'shows');
+// SHOW_DATA points shows/, rig.json and the open-show state somewhere else —
+// a scratch copy for testing next to a console that is running a real show.
+const DATA = process.env.SHOW_DATA ?? ROOT;
+const SHOWS = join(DATA, 'shows');
 const SONGS = join(ROOT, 'songs');
-const RIG_FILE = join(ROOT, 'rig.json');
-const STATE_FILE = join(ROOT, '.state.json');
+const RIG_FILE = join(DATA, 'rig.json');
+const STATE_FILE = join(DATA, '.state.json');
 const AUDIO_EXT = new Set(['.mp3', '.wav', '.m4a', '.aac', '.flac', '.ogg', '.aiff', '.aif']);
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -44,6 +51,7 @@ const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
 
 let rig = readJson(RIG_FILE, null);
 if (!rig) throw new Error(`can't read ${RIG_FILE}`);
+normaliseRig(rig);
 
 const state = readJson(STATE_FILE, {});
 const showPath = (name) => join(SHOWS, `${name}.json`);
@@ -52,16 +60,16 @@ const listShows = () => readdirSync(SHOWS).filter((f) => f.endsWith('.json')).ma
 let currentName = state.current && existsSync(showPath(state.current)) ? state.current : listShows()[0];
 if (!currentName) {
   currentName = 'untitled';
-  writeFileSync(showPath(currentName), JSON.stringify(emptyShow('Untitled show'), null, 2) + '\n');
+  writeFileSync(showPath(currentName), prettyJson(emptyShow('Untitled show')));
 }
 let show = readJson(showPath(currentName), emptyShow());
 const history = new Map(); // name → { past: string[], future: string[] }
-let lastWritten = { show: null, rig: JSON.stringify(rig, null, 2) + '\n' };
+let lastWritten = { show: null, rig: prettyJson(rig) };
 
 function saveState() { writeFileSync(STATE_FILE, JSON.stringify({ current: currentName }, null, 2) + '\n'); }
 
 function writeShow() {
-  const text = JSON.stringify(show, null, 2) + '\n';
+  const text = prettyJson(show);
   lastWritten.show = text;
   const tmp = showPath(currentName) + '.tmp';
   writeFileSync(tmp, text);
@@ -113,98 +121,68 @@ watch(RIG_FILE, () => {
 
 // ---------------------------------------------------------------- output
 
-// `enabled` is what was asked for; `connected` is whether the port is open.
-// They differ when the ENTTEC is unplugged or drops off USB mid-show: output
-// stays wanted, the server checks once a second, and frames resume on their
-// own when it is back. Only switching output off stops the waiting.
-// DMX_DEVICE pins a port path (tests use a pty); otherwise the first
-// /dev/cu.usbserial-* is used.
-const output = { enabled: false, connected: false, device: findDevice(), error: null, frames: 0, lastFrameAt: null, last: new Uint8Array(512) };
-let enttec = null;
-let watcher = null;
-let resend = false;
+// DMX runs on its own thread (output-worker.js) so nothing here — HTTP, Vite,
+// song analysis — can make the light stutter. The worker gets every show and
+// rig change, the audio clock readings from the browser, and blackout; it
+// reports its status back.
+let outputWorker;
+let outputState = { enabled: false, connected: false, device: findDevice(), error: null, frames: 0, lastFrameAt: null };
+let blackout = false;
+let statusWaiters = [];
 
-function connect() {
-  const path = process.env.DMX_DEVICE ?? findDevice();
-  if (!path) { output.error = 'ENTTEC not connected — output will start when it is plugged in'; return false; }
-  try {
-    enttec = new Enttec(path);
-    enttec.open();
-    output.device = path;
-    output.connected = true;
-    output.error = null;
-    resend = true;
-    return true;
-  } catch (e) {
-    enttec?.close();
-    enttec = null;
-    output.error = `can't open ${path}: ${e.code ?? e.message} — retrying`;
-    return false;
-  }
-}
-
-function watchForDevice() {
-  if (watcher) return;
-  watcher = setInterval(() => {
-    if (!output.enabled || enttec) { clearInterval(watcher); watcher = null; return; }
-    if (connect()) { clearInterval(watcher); watcher = null; }
-    broadcastOutput();
-  }, 1000);
+function startOutputWorker() {
+  outputWorker = new Worker(new URL('./output-worker.js', import.meta.url), { env: process.env });
+  outputWorker.on('message', (m) => {
+    if (m.type === 'log') console.log(m.text);
+    if (m.type === 'status') {
+      const before = outputState;
+      outputState = m.output;
+      statusWaiters.forEach((w) => w(outputState));
+      statusWaiters = [];
+      if (before.enabled !== outputState.enabled || before.connected !== outputState.connected || before.error !== outputState.error || outputState.enabled) broadcastOutput();
+    }
+  });
+  outputWorker.on('error', (e) => console.error('output worker:', e));
+  outputWorker.on('exit', (code) => {
+    if (shuttingDown) return;
+    console.error(`output worker exited (${code}) — restarting`);
+    const wanted = outputState.enabled;
+    startOutputWorker();
+    if (wanted) outputWorker.postMessage({ type: 'output', enabled: true });
+  });
+  outputWorker.postMessage({ type: 'rig', rig });
+  outputWorker.postMessage({ type: 'show', show });
+  outputWorker.postMessage({ type: 'clock', clock });
+  outputWorker.postMessage({ type: 'blackout', on: blackout });
 }
 
 function setOutput(enabled) {
-  output.enabled = enabled;
-  if (enabled && !enttec && !connect()) watchForDevice();
-  if (!enabled) {
-    if (enttec) {
-      // Leave the rig dark, not frozen on the last look.
-      try { enttec.sendDmx(new Uint8Array(512)); } catch { /* port gone */ }
-      enttec.close();
-      enttec = null;
-    }
-    output.connected = false;
-    output.error = null;
-  }
-  broadcastOutput();
+  const next = new Promise((resolveStatus) => statusWaiters.push(resolveStatus));
+  outputWorker.postMessage({ type: 'output', enabled });
+  return Promise.race([next, new Promise((r) => setTimeout(() => r(outputState), 1000))]);
 }
 
-function dropped(e) {
-  enttec?.close();
-  enttec = null;
-  output.connected = false;
-  const at = new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-  output.error = `ENTTEC dropped at ${at} (${e.code ?? e.message}) — output resumes when it is back`;
-  console.log(output.error);
-  broadcastOutput();
-  watchForDevice();
+function setBlackout(on) {
+  blackout = on;
+  outputWorker.postMessage({ type: 'blackout', on });
+  broadcast({ type: 'blackout', on });
 }
 
-function sendFrame(universe) {
-  if (!output.enabled || !enttec) return;
-  const changed = universe.some((v, i) => v !== output.last[i]);
-  const stale = Date.now() - (output.lastFrameAt ?? 0) > 1000;
-  if (!changed && !stale && !resend) return;
-  try {
-    enttec.sendDmx(universe);
-    output.last.set(universe);
-    output.frames++;
-    output.lastFrameAt = Date.now();
-    resend = false;
-  } catch (e) {
-    dropped(e);
-  }
-}
-
-const outputStatus = () => ({ enabled: output.enabled, connected: output.connected, device: output.device, error: output.error, frames: output.frames, lastFrameAt: output.lastFrameAt });
+const outputStatus = () => outputState;
 function broadcastOutput() { broadcast({ type: 'output', output: outputStatus() }); }
 
 // ---------------------------------------------------------------- browser link
 
 const clients = new Set();
-let clock = { t: 0, playing: false, at: 0 };
+// The audio's position as last reported by the browser: it was at t seconds
+// at wall time `at`. Extrapolated, never trusted to arrive on time.
+let clock = { t: 0, playing: false, at: Date.now() };
+const clockNow = () => (clock.playing ? clock.t + (Date.now() - clock.at) / 1000 : clock.t);
 const pendingSnapshots = new Map();
 
 function broadcast(msg) {
+  if (msg.type === 'show') outputWorker?.postMessage({ type: 'show', show: msg.show });
+  if (msg.type === 'rig') outputWorker?.postMessage({ type: 'rig', rig: msg.rig });
   const text = JSON.stringify(msg);
   for (const ws of clients) if (ws.readyState === 1) ws.send(text);
 }
@@ -216,7 +194,7 @@ function requestSnapshot(params) {
   if (!ws) return Promise.reject(new Error('no browser has the show open — open http://localhost:8280 and try again'));
   const id = Math.random().toString(36).slice(2);
   return new Promise((resolvePromise, reject) => {
-    const timer = setTimeout(() => { pendingSnapshots.delete(id); reject(new Error('the browser did not answer within 10s')); }, 10000);
+    const timer = setTimeout(() => { pendingSnapshots.delete(id); reject(new Error('the browser did not answer within 30s')); }, 30000);
     pendingSnapshots.set(id, { resolve: resolvePromise, timer });
     ws.send(JSON.stringify({ type: 'snapshot', id, ...params }));
   });
@@ -294,11 +272,6 @@ function serveFile(req, res, file) {
   createReadStream(file).pipe(res);
 }
 
-function staticPath(root, rel) {
-  const p = resolve(root, '.' + decodeURIComponent(rel));
-  return p.startsWith(root) ? p : null;
-}
-
 // Times from Claude arrive as numbers or expressions: "bar 17", "chorus 1 + 2 beats".
 function timeParam(raw, fallback = 0) {
   if (raw == null || raw === '') return fallback;
@@ -322,9 +295,10 @@ const routes = {
   'GET /api/health': () => ({ ok: true, show: currentName, clients: liveClients().length }),
   'GET /api/rig': () => rig,
   'PUT /api/rig': (body) => {
-    const next = { ...rig, ...body };
-    for (const key of ['fixtures', 'groups', 'targets', 'stage', 'home']) if (body[key] !== undefined) next[key] = body[key];
-    const text = JSON.stringify(next, null, 2) + '\n';
+    const next = { ...rig };
+    for (const key of ['fixtures', 'groups', 'targets', 'room', 'home', 'name', 'notes']) if (body[key] !== undefined) next[key] = body[key];
+    normaliseRig(next);
+    const text = prettyJson(next);
     lastWritten.rig = text;
     writeFileSync(RIG_FILE, text);
     rig = next;
@@ -337,7 +311,7 @@ const routes = {
     const name = slug(body.name ?? body.title ?? 'show');
     if (existsSync(showPath(name))) throw new Error(`a show called "${name}" already exists`);
     const fresh = { ...emptyShow(body.title ?? name), ...(body.audio ? { audio: body.audio } : {}) };
-    writeFileSync(showPath(name), JSON.stringify(fresh, null, 2) + '\n');
+    writeFileSync(showPath(name), prettyJson(fresh));
     openShow(name);
     return { name, show };
   },
@@ -362,7 +336,7 @@ const routes = {
     broadcast({ type: 'show', name: currentName, show, summary: 'redo', source: 'undo' });
     return { ok: true, redoLeft: h.future.length };
   },
-  'GET /api/state': (_, url) => stateAt(timeParam(url.searchParams.get('t'), clock.t)),
+  'GET /api/state': (_, url) => stateAt(timeParam(url.searchParams.get('t'), clockNow())),
   'GET /api/songs': () => ({ songs: listSongs() }),
   'POST /api/songs/import': (body) => {
     const src = String(body.path ?? '').replace(/^~(?=\/)/, process.env.HOME);
@@ -373,17 +347,17 @@ const routes = {
     return { file };
   },
   'POST /api/songs/analyze': async (body) => analysisFor(body.file, { force: Boolean(body.force) }),
-  'GET /api/transport': () => ({ ...clock, ageMs: Date.now() - clock.at, clients: liveClients().length }),
+  'GET /api/transport': () => ({ t: clockNow(), playing: clock.playing, reportedAgoMs: Date.now() - clock.at, clients: liveClients().length }),
   'POST /api/transport': (body) => {
     if (!liveClients().length) throw new Error('no browser has the show open — open http://localhost:8280');
     broadcast({ type: 'transport', action: body.action, t: body.at != null ? timeParam(body.at) : body.t });
     return { ok: true };
   },
   'GET /api/output': () => outputStatus(),
-  'POST /api/output': (body) => {
-    if (body.blackout != null) broadcast({ type: 'blackout', on: Boolean(body.blackout) });
-    if (body.enabled != null) setOutput(Boolean(body.enabled));
-    return outputStatus();
+  'POST /api/output': async (body) => {
+    if (body.blackout != null) setBlackout(Boolean(body.blackout));
+    if (body.enabled != null) return { ...(await setOutput(Boolean(body.enabled))), blackout };
+    return { ...outputStatus(), blackout };
   },
   'POST /api/snapshot': async (body) => requestSnapshot({
     camera: body.camera,
@@ -411,24 +385,42 @@ const server = createServer(async (req, res) => {
       return send(res, 200, await analysisFor(decodeURIComponent(m[1])));
     }
     if (req.method === 'GET' && url.pathname.startsWith('/songs/')) return serveFile(req, res, songPath(decodeURIComponent(url.pathname.slice(7))));
-    if (req.method === 'GET' && url.pathname.startsWith('/lib/')) return serveFile(req, res, staticPath(join(ROOT, 'lib'), url.pathname.slice(4)));
-    if (req.method === 'GET' && url.pathname.startsWith('/vendor/three/')) return serveFile(req, res, staticPath(join(ROOT, 'node_modules/three'), url.pathname.slice(13)));
-    if (req.method === 'GET') return serveFile(req, res, staticPath(join(ROOT, 'web'), url.pathname === '/' ? '/index.html' : url.pathname));
-    send(res, 404, { error: 'not found' });
+    if (url.pathname.startsWith('/api/')) return send(res, 404, { error: 'not found' });
+    // Everything else is the console, served by Vite.
+    vite.middlewares(req, res, () => send(res, 404, { error: 'not found' }));
   } catch (e) {
     send(res, 400, { error: e.message });
   }
 });
 
-const wss = new WebSocketServer({ server, path: '/ws', verifyClient: ({ req }) => trusted(req) });
+startOutputWorker();
+
+// The console is a Vite app, run in middleware mode: no build step, and edits
+// reload live. Its HMR socket shares this server; ours is /ws.
+const vite = await createViteServer({
+  configFile: join(ROOT, 'vite.config.ts'),
+  server: { middlewareMode: true, ws: { server, path: '/__vite' } },
+  appType: 'spa',
+  logLevel: 'warn',
+});
+
+const wss = new WebSocketServer({ noServer: true });
+server.on('upgrade', (req, socket, head) => {
+  if (new URL(req.url, 'http://x').pathname !== '/ws') return; // Vite's HMR
+  if (!trusted(req)) { socket.destroy(); return; }
+  wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+});
 wss.on('connection', (ws) => {
   clients.add(ws);
-  ws.send(JSON.stringify({ type: 'hello', name: currentName, show, rig, output: outputStatus(), vocabulary: { common: COMMON_PARAMS, types: clipTypes(rig) } }));
+  ws.send(JSON.stringify({ type: 'hello', name: currentName, show, rig, output: outputStatus(), blackout, vocabulary: { common: COMMON_PARAMS, types: clipTypes(rig) } }));
   ws.on('message', (data, isBinary) => {
-    if (isBinary) { if (data.length >= 512) sendFrame(new Uint8Array(data.buffer, data.byteOffset, 512)); return; }
+    if (isBinary) return;
     let msg;
     try { msg = JSON.parse(data.toString()); } catch { return; }
-    if (msg.type === 'clock') clock = { t: msg.t, playing: msg.playing, at: Date.now() };
+    if (msg.type === 'clock' && Number.isFinite(msg.t)) {
+      clock = { t: msg.t, playing: Boolean(msg.playing), at: Number.isFinite(msg.at) ? msg.at : Date.now() };
+      outputWorker.postMessage({ type: 'clock', clock });
+    }
     if (msg.type === 'snapshot') {
       const pending = pendingSnapshots.get(msg.id);
       if (pending) { clearTimeout(pending.timer); pendingSnapshots.delete(msg.id); pending.resolve(msg.error ? { error: msg.error } : { image: msg.image, t: msg.t, camera: msg.camera }); }
@@ -438,12 +430,15 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`show server on http://localhost:${PORT} — show "${currentName}", ENTTEC ${output.device ?? 'not found'}`);
+  console.log(`show server on http://localhost:${PORT} — show "${currentName}", ENTTEC ${outputState.device ?? "not found"}`);
 });
 
+let shuttingDown = false;
 function shutdown() {
-  if (enttec) { try { enttec.sendDmx(new Uint8Array(512)); } catch { /* gone */ } enttec.close(); }
-  process.exit(0);
+  shuttingDown = true;
+  // The worker darkens the rig before it exits.
+  outputWorker.postMessage({ type: 'shutdown' });
+  setTimeout(() => process.exit(0), 300);
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

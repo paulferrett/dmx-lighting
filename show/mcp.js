@@ -76,6 +76,13 @@ expressive range is movement and timing. Design with that:
 • A good show breathes: hold back in verses (fewer heads, slower moves,
   darker), open up on choruses, save prism/strobe/fast chase for drops.
 
+The room is part of the design. rig_get → rig.room lists walls and boxes
+(solid: beams stop on them, gobos land on them) and zones (floor areas — the
+dancefloor, where the crowd stands), plus the ceiling height or null for open
+air. Every room object is an aim target by its id: a wall's centre, a box's
+top, a zone's centre on the floor. Use it: sweep across the dancefloor zone,
+throw gobos onto the back wall or ceiling, keep beams off the DJ booth.
+
 Workflow: rig_get → song_analysis → show_settings (bpm, offset, duration) →
 markers_set (sections) → clips_add per section → preview_snapshot to look →
 adjust. preview_snapshot needs the console open in a browser (console_open).`;
@@ -84,7 +91,7 @@ const server = new McpServer({ name: 'dmx-show', version: '0.1.0' }, { instructi
 
 server.registerTool('rig_get', {
   title: 'Rig, vocabulary and the open show',
-  description: 'Start here. The fixtures (positions in metres, addresses, groups, named aim targets), what each head can do, the full clip vocabulary with every field explained, the conventions, and a summary of the open show.',
+  description: 'Start here. The fixtures (positions and rotations, addresses, groups), the room (walls, boxes, dancefloor zones — all aim targets), named aim targets, what each head can do, the full clip vocabulary with every field explained, the conventions, and a summary of the open show.',
   inputSchema: {},
 }, tool(async () => {
   const [rig, vocabulary, { name, show }, health, shows] = await Promise.all([
@@ -105,17 +112,24 @@ server.registerTool('rig_get', {
 
 server.registerTool('rig_update', {
   title: 'Change the rig',
-  description: 'Replace whole sections of the rig: fixtures (position [x,y,z] metres — x audience-left to right, y up, z toward the audience; mount "upright" or "hung"; yaw degrees; panOffset/tiltOffset/panInvert/tiltInvert to line the preview up with the real heads), groups, targets (name → [x,y,z]), stage ({haze 0–1, wall}). Read rig_get first and send back the full section you change.',
+  description: 'Replace whole sections of the rig. fixtures: position [x,y,z] metres of the base (x audience-left to right, y up, z toward the audience), rotation [x,y,z] degrees (three.js Euler XYZ: [0,0,0] upright, [0,0,180] hung, [90,0,0] on the back wall facing out, [0,0,-90] on the left wall), address, panOffset/tiltOffset/panInvert/tiltInvert to line the preview up with the real heads. room: {haze 0–1, ceiling metres or null, objects: [{id, label, kind: wall|box|zone, position [x,y,z] base centre, size [w,h,d], rotation degrees about y, crowd (zones)}]}. groups, targets (name → [x,y,z]). Read rig_get first and send back the whole section you change. Paul can also drag all of this into place in the console\'s Rig mode.',
   inputSchema: {
-    fixtures: z.array(z.looseObject({ id: z.string(), address: z.number(), position: z.array(z.number()).length(3) })).optional(),
+    fixtures: z.array(z.looseObject({ id: z.string(), address: z.number(), position: z.array(z.number()).length(3), rotation: z.array(z.number()).length(3).optional() })).optional(),
+    room: z.looseObject({ haze: z.number().optional(), ceiling: z.number().nullable().optional(), objects: z.array(z.looseObject({ id: z.string(), kind: z.enum(['wall', 'box', 'zone']), position: z.array(z.number()).length(3), size: z.array(z.number()).length(3) })).optional() }).optional(),
     groups: z.record(z.string(), z.array(z.string())).optional(),
     targets: z.record(z.string(), z.array(z.number()).length(3)).optional(),
-    stage: z.looseObject({}).optional(),
   },
 }, tool(async (args) => {
   const body = Object.fromEntries(Object.entries(args).filter(([, v]) => v !== undefined));
+  if (body.room) body.room = { ...(await api('GET', '/api/rig')).room, ...body.room };
   const rig = await api('PUT', '/api/rig', body);
-  return text({ ok: true, fixtures: rig.fixtures.map((f) => ({ id: f.id, position: f.position, mount: f.mount })), groups: Object.keys(rig.groups), targets: Object.keys(rig.targets) });
+  return text({
+    ok: true,
+    fixtures: rig.fixtures.map((f) => ({ id: f.id, address: f.address, position: f.position, rotation: f.rotation })),
+    room: rig.room.objects.map((o) => `${o.id} (${o.kind})`),
+    groups: Object.keys(rig.groups),
+    targets: Object.keys(rig.targets),
+  });
 }));
 
 server.registerTool('shows', {

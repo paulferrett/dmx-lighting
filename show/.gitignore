@@ -4,3 +4,4 @@ node_modules/
 songs/*
 !songs/.gitkeep
 shows/*.tmp
+web/dist/
