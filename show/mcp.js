@@ -272,7 +272,7 @@ server.registerTool('transport', {
 
 server.registerTool('output', {
   title: 'DMX output to the real heads',
-  description: 'enabled: true sends the console\'s frames to the ENTTEC DMX USB PRO, so the real rig follows the show; false stops and leaves the rig dark. blackout: true holds every dimmer at 0 (on screen and on the rig) until blackout: false. With no arguments, reports status. Only turn output on when Paul has asked to run the real lights — and the Disco 240 must be unplugged from the line.',
+  description: 'enabled: true sends the console\'s frames to the ENTTEC DMX USB PRO, so the real rig follows the show; false stops and leaves the rig dark. blackout: true holds every dimmer at 0 (on screen and on the rig) until blackout: false. With no arguments, reports status: enabled is what was asked for, connected is whether the ENTTEC is actually open. Enabled but not connected means it is unplugged or dropped off USB; output resumes by itself when it is back. Only turn output on when Paul has asked to run the real lights — and the Disco 240 must be unplugged from the line.',
   inputSchema: { enabled: z.boolean().optional(), blackout: z.boolean().optional() },
 }, tool(async ({ enabled, blackout }) => {
   if (enabled == null && blackout == null) return text(await api('GET', '/api/output'));

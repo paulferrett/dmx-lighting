@@ -31,6 +31,8 @@ button { font: inherit; color: inherit; }
 .btn.play { min-width: 40px; }
 .btn.danger { color: #ff8a95; }
 .btn.on, #blackout.on { background: #fff; color: #000; }
+.btn.output.waiting { background: #4a3a10; border-color: #ffb020; color: #ffd27a; animation: waiting 1.2s ease-in-out infinite; }
+@keyframes waiting { 50% { opacity: 0.55; } }
 .btn.output.on { background: var(--live); border-color: var(--live); color: #fff; font-weight: 700; box-shadow: 0 0 12px var(--live); }
 .mini { background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 11px; color: var(--dim); cursor: pointer; line-height: 16px; }
 .mini.on { background: #ffcf4a; color: #000; border-color: #ffcf4a; }

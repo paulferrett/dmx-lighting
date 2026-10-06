@@ -288,7 +288,7 @@ export class Inspector {
     const box = el('input', '', { type: 'checkbox', checked: output.enabled, onchange: (e) => this.hooks.setOutput(e.target.checked) });
     toggle.append(box, document.createTextNode(' Send DMX to the ENTTEC'));
     o.append(toggle);
-    o.append(el('p', `ins-help${output.error ? ' err' : ''}`, { text: output.error ?? `${output.device ?? 'No ENTTEC found'}${output.enabled ? ` · ${output.frames} frames sent` : ''}. Unplug the Disco 240 first — two transmitters on one line fight.` }));
+    o.append(el('p', `ins-help${output.error ? ' err' : ''}`, { text: output.error ?? `${output.device ?? 'No ENTTEC found'}${output.connected ? ` · ${output.frames} frames sent` : ''}. Unplug the Disco 240 first — two transmitters on one line fight.` }));
 
     const live = this.section('Heads now');
     const table = el('table', 'live');

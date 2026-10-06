@@ -210,7 +210,7 @@ function frame() {
 // output keeps running when the tab isn't drawing.
 setInterval(() => {
   if (!ws || ws.readyState !== 1 || !app.show) return;
-  if (app.output.enabled) {
+  if (app.output.enabled && app.output.connected) {
     const states = app.blackout
       ? Object.fromEntries(Object.entries(app.states).map(([id, s]) => [id, { ...s, dimmer: 0 }]))
       : evaluate(app.show, app.rig, currentTime()).fixtures;
@@ -272,8 +272,10 @@ function paintClock(t) {
 function paintTransport() { $('#play').textContent = app.playing ? '❚❚' : '▶'; }
 function paintOutput() {
   const b = $('#output');
-  b.classList.toggle('on', app.output.enabled);
-  b.textContent = app.output.enabled ? 'DMX LIVE' : 'DMX off';
+  const waiting = app.output.enabled && !app.output.connected;
+  b.classList.toggle('on', app.output.enabled && !waiting);
+  b.classList.toggle('waiting', waiting);
+  b.textContent = waiting ? 'DMX waiting…' : app.output.enabled ? 'DMX LIVE' : 'DMX off';
   b.title = app.output.error ?? app.output.device ?? 'No ENTTEC found';
 }
 function paintLabels() {

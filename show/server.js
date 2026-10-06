@@ -113,51 +113,89 @@ watch(RIG_FILE, () => {
 
 // ---------------------------------------------------------------- output
 
-const output = { enabled: false, device: findDevice(), error: null, frames: 0, lastFrameAt: null, last: new Uint8Array(512) };
+// `enabled` is what was asked for; `connected` is whether the port is open.
+// They differ when the ENTTEC is unplugged or drops off USB mid-show: output
+// stays wanted, the server checks once a second, and frames resume on their
+// own when it is back. Only switching output off stops the waiting.
+// DMX_DEVICE pins a port path (tests use a pty); otherwise the first
+// /dev/cu.usbserial-* is used.
+const output = { enabled: false, connected: false, device: findDevice(), error: null, frames: 0, lastFrameAt: null, last: new Uint8Array(512) };
 let enttec = null;
+let watcher = null;
+let resend = false;
+
+function connect() {
+  const path = process.env.DMX_DEVICE ?? findDevice();
+  if (!path) { output.error = 'ENTTEC not connected — output will start when it is plugged in'; return false; }
+  try {
+    enttec = new Enttec(path);
+    enttec.open();
+    output.device = path;
+    output.connected = true;
+    output.error = null;
+    resend = true;
+    return true;
+  } catch (e) {
+    enttec?.close();
+    enttec = null;
+    output.error = `can't open ${path}: ${e.code ?? e.message} — retrying`;
+    return false;
+  }
+}
+
+function watchForDevice() {
+  if (watcher) return;
+  watcher = setInterval(() => {
+    if (!output.enabled || enttec) { clearInterval(watcher); watcher = null; return; }
+    if (connect()) { clearInterval(watcher); watcher = null; }
+    broadcastOutput();
+  }, 1000);
+}
 
 function setOutput(enabled) {
-  if (enabled && !enttec) {
-    try {
-      enttec = new Enttec(findDevice());
-      enttec.open();
-      output.device = enttec.path;
-      output.error = null;
-    } catch (e) {
-      enttec = null;
-      output.error = e.message;
-      output.enabled = false;
-      broadcastOutput();
-      throw e;
-    }
-  }
-  if (!enabled && enttec) {
-    // Leave the rig dark, not frozen on the last look.
-    try { enttec.sendDmx(new Uint8Array(512)); } catch { /* port gone */ }
-    enttec.close();
-    enttec = null;
-  }
   output.enabled = enabled;
+  if (enabled && !enttec && !connect()) watchForDevice();
+  if (!enabled) {
+    if (enttec) {
+      // Leave the rig dark, not frozen on the last look.
+      try { enttec.sendDmx(new Uint8Array(512)); } catch { /* port gone */ }
+      enttec.close();
+      enttec = null;
+    }
+    output.connected = false;
+    output.error = null;
+  }
   broadcastOutput();
+}
+
+function dropped(e) {
+  enttec?.close();
+  enttec = null;
+  output.connected = false;
+  const at = new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  output.error = `ENTTEC dropped at ${at} (${e.code ?? e.message}) — output resumes when it is back`;
+  console.log(output.error);
+  broadcastOutput();
+  watchForDevice();
 }
 
 function sendFrame(universe) {
   if (!output.enabled || !enttec) return;
   const changed = universe.some((v, i) => v !== output.last[i]);
   const stale = Date.now() - (output.lastFrameAt ?? 0) > 1000;
-  if (!changed && !stale) return;
+  if (!changed && !stale && !resend) return;
   try {
     enttec.sendDmx(universe);
     output.last.set(universe);
     output.frames++;
     output.lastFrameAt = Date.now();
+    resend = false;
   } catch (e) {
-    output.error = e.message;
-    setOutput(false);
+    dropped(e);
   }
 }
 
-const outputStatus = () => ({ enabled: output.enabled, device: output.device, error: output.error, frames: output.frames, lastFrameAt: output.lastFrameAt });
+const outputStatus = () => ({ enabled: output.enabled, connected: output.connected, device: output.device, error: output.error, frames: output.frames, lastFrameAt: output.lastFrameAt });
 function broadcastOutput() { broadcast({ type: 'output', output: outputStatus() }); }
 
 // ---------------------------------------------------------------- browser link
