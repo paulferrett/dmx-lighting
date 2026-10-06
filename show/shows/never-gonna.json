@@ -14,7 +14,7 @@
     },
     {
       "id": "m9o2iuq",
-      "t": 18.602,
+      "t": 31.275,
       "label": "verse 1"
     },
     {
@@ -64,129 +64,6 @@
     }
   ],
   "tracks": [
-    {
-      "id": "base",
-      "name": "Base look",
-      "muted": false,
-      "clips": [
-        {
-          "id": "c1ikqox",
-          "type": "look",
-          "start": 1.705,
-          "end": 18.602,
-          "fadeIn": 3,
-          "label": "intro haze",
-          "dimmer": 0.7,
-          "colour": "purple",
-          "crawl": 0.55,
-          "aim": {
-            "pan": 0,
-            "tilt": 25
-          }
-        },
-        {
-          "id": "c8fo078",
-          "type": "look",
-          "start": 18.602,
-          "end": 35.499,
-          "fixtures": "all",
-          "dimmer": 0.6,
-          "colour": "blue",
-          "gobo": "flower8"
-        },
-        {
-          "id": "co28cps",
-          "type": "look",
-          "start": 35.499,
-          "end": 43.947,
-          "dimmer": 0.85,
-          "colour": "cyan",
-          "gobo": "star",
-          "goboMode": "shake",
-          "goboSpeed": 0.5
-        },
-        {
-          "id": "c8pkqwc",
-          "type": "look",
-          "start": 43.947,
-          "end": 60.844,
-          "dimmer": 1,
-          "colour": "white",
-          "prism": "in"
-        },
-        {
-          "id": "cim9gct",
-          "type": "look",
-          "start": 60.844,
-          "end": 77.741,
-          "dimmer": 0.6,
-          "colour": "green",
-          "gobo": "grid"
-        },
-        {
-          "id": "cm0i2uo",
-          "type": "look",
-          "start": 77.741,
-          "end": 86.19,
-          "dimmer": 0.85,
-          "colour": "cyan",
-          "gobo": "star",
-          "goboMode": "shake",
-          "goboSpeed": 0.7
-        },
-        {
-          "id": "ccq4di1",
-          "type": "look",
-          "start": 86.19,
-          "end": 119.984,
-          "dimmer": 1,
-          "colour": "yellow",
-          "prism": "rotate",
-          "prismSpeed": 0.4
-        },
-        {
-          "id": "c5wssfu",
-          "type": "look",
-          "start": 119.984,
-          "end": 136.881,
-          "dimmer": 0.75,
-          "colour": "red",
-          "gobo": "donut3",
-          "goboMode": "shake",
-          "goboSpeed": 0.3
-        },
-        {
-          "id": "cd39eah",
-          "type": "look",
-          "start": 136.881,
-          "end": 153.778,
-          "fadeIn": 1,
-          "dimmer": 0.45,
-          "colour": "blue",
-          "crawl": 0.7
-        },
-        {
-          "id": "cbkjfhw",
-          "type": "look",
-          "start": 153.778,
-          "end": 196.02,
-          "dimmer": 1,
-          "colour": "white",
-          "prism": "rotate",
-          "prismSpeed": 0.7
-        },
-        {
-          "id": "c93ar31",
-          "type": "look",
-          "start": 196.02,
-          "end": 211.2,
-          "fadeOut": 12,
-          "dimmer": 0.8,
-          "colour": "orange",
-          "crawl": 0.8
-        }
-      ]
-    },
     {
       "id": "move",
       "name": "Movement",
@@ -362,6 +239,129 @@
           "fadeIn": 4,
           "figure": "still",
           "aim": "sky"
+        }
+      ]
+    },
+    {
+      "id": "base",
+      "name": "Base look",
+      "muted": false,
+      "clips": [
+        {
+          "id": "c1ikqox",
+          "type": "look",
+          "start": 1.705,
+          "end": 18.602,
+          "fadeIn": 3,
+          "label": "intro haze",
+          "dimmer": 0.7,
+          "colour": "purple",
+          "crawl": 0.55,
+          "aim": {
+            "pan": 0,
+            "tilt": 25
+          }
+        },
+        {
+          "id": "c8fo078",
+          "type": "look",
+          "start": 18.602,
+          "end": 35.499,
+          "fixtures": "all",
+          "dimmer": 0.6,
+          "colour": "blue",
+          "gobo": "flower8"
+        },
+        {
+          "id": "co28cps",
+          "type": "look",
+          "start": 35.499,
+          "end": 43.947,
+          "dimmer": 0.85,
+          "colour": "cyan",
+          "gobo": "star",
+          "goboMode": "shake",
+          "goboSpeed": 0.5
+        },
+        {
+          "id": "c8pkqwc",
+          "type": "look",
+          "start": 43.947,
+          "end": 60.844,
+          "dimmer": 1,
+          "colour": "white",
+          "prism": "in"
+        },
+        {
+          "id": "cim9gct",
+          "type": "look",
+          "start": 60.844,
+          "end": 77.741,
+          "dimmer": 0.6,
+          "colour": "green",
+          "gobo": "grid"
+        },
+        {
+          "id": "cm0i2uo",
+          "type": "look",
+          "start": 77.741,
+          "end": 86.19,
+          "dimmer": 0.85,
+          "colour": "cyan",
+          "gobo": "star",
+          "goboMode": "shake",
+          "goboSpeed": 0.7
+        },
+        {
+          "id": "ccq4di1",
+          "type": "look",
+          "start": 86.19,
+          "end": 119.984,
+          "dimmer": 1,
+          "colour": "yellow",
+          "prism": "rotate",
+          "prismSpeed": 0.4
+        },
+        {
+          "id": "c5wssfu",
+          "type": "look",
+          "start": 119.984,
+          "end": 136.881,
+          "dimmer": 0.75,
+          "colour": "red",
+          "gobo": "donut3",
+          "goboMode": "shake",
+          "goboSpeed": 0.3
+        },
+        {
+          "id": "cd39eah",
+          "type": "look",
+          "start": 136.881,
+          "end": 153.778,
+          "fadeIn": 1,
+          "dimmer": 0.45,
+          "colour": "blue",
+          "crawl": 0.7
+        },
+        {
+          "id": "cbkjfhw",
+          "type": "look",
+          "start": 153.778,
+          "end": 196.02,
+          "dimmer": 1,
+          "colour": "white",
+          "prism": "rotate",
+          "prismSpeed": 0.7
+        },
+        {
+          "id": "c93ar31",
+          "type": "look",
+          "start": 196.02,
+          "end": 211.2,
+          "fadeOut": 12,
+          "dimmer": 0.8,
+          "colour": "orange",
+          "crawl": 0.8
         }
       ]
     },
