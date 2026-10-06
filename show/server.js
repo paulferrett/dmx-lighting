@@ -214,6 +214,19 @@ async function analysisFor(file, { force = false } = {}) {
 
 // ---------------------------------------------------------------- http
 
+// Only the console itself may talk to this server. Any page open in the
+// browser can aim a request or a WebSocket at localhost, so: the Host must be
+// this server (no DNS rebinding), a browser Origin must be the console's own,
+// and anything that changes state must be JSON, which a cross-site page can't
+// send without a preflight this server never answers.
+const ALLOWED_HOSTS = new Set([`localhost:${PORT}`, `127.0.0.1:${PORT}`]);
+const ALLOWED_ORIGINS = new Set([...ALLOWED_HOSTS].map((h) => `http://${h}`));
+function trusted(req) {
+  if (!ALLOWED_HOSTS.has(req.headers.host)) return false;
+  const origin = req.headers.origin;
+  return !origin || ALLOWED_ORIGINS.has(origin);
+}
+
 function send(res, status, body, type = 'application/json') {
   const data = type === 'application/json' ? JSON.stringify(body) : body;
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' });
@@ -344,6 +357,10 @@ const routes = {
 };
 
 const server = createServer(async (req, res) => {
+  if (!trusted(req)) return send(res, 403, { error: 'not from the show console' });
+  if (req.method !== 'GET' && !String(req.headers['content-type'] ?? '').startsWith('application/json')) {
+    return send(res, 415, { error: 'send JSON' });
+  }
   const url = new URL(req.url, `http://${req.headers.host}`);
   const key = `${req.method} ${url.pathname}`;
   try {
@@ -365,7 +382,7 @@ const server = createServer(async (req, res) => {
   }
 });
 
-const wss = new WebSocketServer({ server, path: '/ws' });
+const wss = new WebSocketServer({ server, path: '/ws', verifyClient: ({ req }) => trusted(req) });
 wss.on('connection', (ws) => {
   clients.add(ws);
   ws.send(JSON.stringify({ type: 'hello', name: currentName, show, rig, output: outputStatus(), vocabulary: { common: COMMON_PARAMS, types: clipTypes(rig) } }));
